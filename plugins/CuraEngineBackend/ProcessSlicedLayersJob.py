@@ -65,6 +65,84 @@ class ProcessSlicedLayersJob(Job):
     def getBuildPlate(self):
         return self._build_plate_number
 
+    def getMinimumLayerNumber(self) -> (int, int):
+        min_layer_number = 0
+        negative_layers = 0
+        for layer in self._layers:
+            if layer.id < min_layer_number:
+                min_layer_number = layer.id
+            if layer.id < 0:
+                negative_layers += 1
+        return (min_layer_number, negative_layers)
+
+    def getNextPolygon(self, polygon, layer_height) -> LayerPolygon:
+        extruder = polygon.extruder
+
+        line_types = numpy.fromstring(polygon.line_type, dtype="u1")  # Convert bytearray to numpy array
+        line_types = line_types.reshape((-1, 1))
+
+        points = numpy.fromstring(polygon.points, dtype="f4")  # Convert bytearray to numpy array
+        if polygon.point_type == 0:  # Point2D
+            points = points.reshape((-1,
+                                     2))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
+        else:  # Point3D
+            points = points.reshape((-1, 3))
+
+        line_widths = numpy.fromstring(polygon.line_width, dtype="f4")  # Convert bytearray to numpy array
+        line_widths = line_widths.reshape(
+            (-1, 1))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
+
+        line_thicknesses = numpy.fromstring(polygon.line_thickness, dtype="f4")  # Convert bytearray to numpy array
+        line_thicknesses = line_thicknesses.reshape(
+            (-1, 1))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
+
+        line_feedrates = numpy.fromstring(polygon.line_feedrate, dtype="f4")  # Convert bytearray to numpy array
+        line_feedrates = line_feedrates.reshape(
+            (-1, 1))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
+
+        # Create a new 3D-array, copy the 2D points over and insert the right height.
+        # This uses manual array creation + copy rather than numpy.insert since this is
+        # faster.
+        new_points = numpy.empty((len(points), 3), numpy.float32)
+        if polygon.point_type == 0:  # Point2D
+            new_points[:, 0] = points[:, 0]
+            new_points[:, 1] = layer_height / 1000  # layer height value is in backend representation
+            new_points[:, 2] = -points[:, 1]
+        else:  # Point3D
+            new_points[:, 0] = points[:, 0]
+            new_points[:, 1] = points[:, 2]
+            new_points[:, 2] = -points[:, 1]
+
+        this_poly = LayerPolygon.LayerPolygon(extruder, line_types, new_points, line_widths, line_thicknesses,
+                                              line_feedrates)
+        this_poly.buildCache()
+
+        return this_poly
+
+    def getColorsPerExtruder(self) -> [numpy.float32]:
+        global_container_stack = Application.getInstance().getGlobalContainerStack()
+        manager = ExtruderManager.getInstance()
+        extruders = manager.getActiveExtruderStacks()
+        if extruders:
+            material_color_map = numpy.zeros((len(extruders), 4), dtype=numpy.float32)
+            for extruder in extruders:
+                position = int(extruder.getMetaDataEntry("position", default="0"))  # Get the position
+                try:
+                    default_color = ExtrudersModel.defaultColors[position]
+                except IndexError:
+                    default_color = "#e0e000"
+                color_code = extruder.material.getMetaDataEntry("color_code", default=default_color)
+                color = colorCodeToRGBA(color_code)
+                material_color_map[position, :] = color
+        else:
+            # Single extruder via global stack.
+            material_color_map = numpy.zeros((1, 4), dtype=numpy.float32)
+            color_code = global_container_stack.material.getMetaDataEntry("color_code", default="#e0e000")
+            color = colorCodeToRGBA(color_code)
+            material_color_map[0, :] = color
+
+        return material_color_map
+
     def run(self):
         Logger.log("d", "Processing new layer for build plate %s..." % self._build_plate_number)
         start_time = time()
@@ -98,13 +176,7 @@ class ProcessSlicedLayersJob(Job):
         # When using a raft, the raft layers are sent as layers < 0. Instead of allowing layers < 0, we
         # instead simply offset all other layers so the lowest layer is always 0. It could happens that
         # the first raft layer has value -8 but there are just 4 raft (negative) layers.
-        min_layer_number = 0
-        negative_layers = 0
-        for layer in self._layers:
-            if layer.id < min_layer_number:
-                min_layer_number = layer.id
-            if layer.id < 0:
-                negative_layers += 1
+        (min_layer_number, negative_layers) = self.getMinimumLayerNumber()
 
         current_layer = 0
 
@@ -119,47 +191,10 @@ class ProcessSlicedLayersJob(Job):
             layer_data.setLayerThickness(abs_layer_number, layer.thickness)
 
             for p in range(layer.repeatedMessageCount("path_segment")):
-                polygon = layer.getRepeatedMessage("path_segment", p)
-
-                extruder = polygon.extruder
-
-                line_types = numpy.fromstring(polygon.line_type, dtype="u1")  # Convert bytearray to numpy array
-                line_types = line_types.reshape((-1,1))
-
-                points = numpy.fromstring(polygon.points, dtype="f4")  # Convert bytearray to numpy array
-                if polygon.point_type == 0: # Point2D
-                    points = points.reshape((-1,2))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
-                else:  # Point3D
-                    points = points.reshape((-1,3))
-
-                line_widths = numpy.fromstring(polygon.line_width, dtype="f4")  # Convert bytearray to numpy array
-                line_widths = line_widths.reshape((-1,1))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
-
-                line_thicknesses = numpy.fromstring(polygon.line_thickness, dtype="f4")  # Convert bytearray to numpy array
-                line_thicknesses = line_thicknesses.reshape((-1,1))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
-
-                line_feedrates = numpy.fromstring(polygon.line_feedrate, dtype="f4")  # Convert bytearray to numpy array
-                line_feedrates = line_feedrates.reshape((-1,1))  # We get a linear list of pairs that make up the points, so make numpy interpret them correctly.
-
-                # Create a new 3D-array, copy the 2D points over and insert the right height.
-                # This uses manual array creation + copy rather than numpy.insert since this is
-                # faster.
-                new_points = numpy.empty((len(points), 3), numpy.float32)
-                if polygon.point_type == 0:  # Point2D
-                    new_points[:, 0] = points[:, 0]
-                    new_points[:, 1] = layer.height / 1000  # layer height value is in backend representation
-                    new_points[:, 2] = -points[:, 1]
-                else: # Point3D
-                    new_points[:, 0] = points[:, 0]
-                    new_points[:, 1] = points[:, 2]
-                    new_points[:, 2] = -points[:, 1]
-
-                this_poly = LayerPolygon.LayerPolygon(extruder, line_types, new_points, line_widths, line_thicknesses, line_feedrates)
-                this_poly.buildCache()
-
-                this_layer.polygons.append(this_poly)
-
+                this_layer.polygons.append(
+                    self.getNextPolygon(layer.getRepeatedMessage("path_segment", p), layer.height))
                 Job.yieldThread()
+
             Job.yieldThread()
             current_layer += 1
             progress = (current_layer / layer_count) * 99
@@ -176,26 +211,7 @@ class ProcessSlicedLayersJob(Job):
         # We are done processing all the layers we got from the engine, now create a mesh out of the data
 
         # Find out colors per extruder
-        global_container_stack = Application.getInstance().getGlobalContainerStack()
-        manager = ExtruderManager.getInstance()
-        extruders = manager.getActiveExtruderStacks()
-        if extruders:
-            material_color_map = numpy.zeros((len(extruders), 4), dtype=numpy.float32)
-            for extruder in extruders:
-                position = int(extruder.getMetaDataEntry("position", default="0"))  # Get the position
-                try:
-                    default_color = ExtrudersModel.defaultColors[position]
-                except IndexError:
-                    default_color = "#e0e000"
-                color_code = extruder.material.getMetaDataEntry("color_code", default=default_color)
-                color = colorCodeToRGBA(color_code)
-                material_color_map[position, :] = color
-        else:
-            # Single extruder via global stack.
-            material_color_map = numpy.zeros((1, 4), dtype=numpy.float32)
-            color_code = global_container_stack.material.getMetaDataEntry("color_code", default="#e0e000")
-            color = colorCodeToRGBA(color_code)
-            material_color_map[0, :] = color
+        material_color_map = self.getColorsPerExtruder()
 
         # We have to scale the colors for compatibility mode
         if OpenGLContext.isLegacyOpenGL() or bool(Application.getInstance().getPreferences().getValue("view/force_layer_view_compatibility_mode")):
