@@ -1671,22 +1671,11 @@
                 "zig_zaggify_infill":
                 {
                     "label": "Connect Infill Lines",
-                    "description": "Connect the ends where the infill pattern meets the inner wall using a line which follows the shape of the inner wall. Enabling this setting can make the infill adhere to the walls better and reduce the effects of infill on the quality of vertical surfaces. Disabling this setting reduces the amount of material used.",
+                    "description": "Connect infill lines to each other, producing a single continuous infill line as much as possible. Enabling this setting can make the infill adhere to the walls better and reduce the effects of infill on the quality of vertical surfaces, as well as improve the consistency of flow during infill printing. Disabling this setting reduces the amount of material used.",
                     "type": "bool",
                     "default_value": false,
-                    "value": "infill_pattern == 'cross' or infill_pattern == 'cross_3d'",
-                    "enabled": "infill_pattern == 'lines' or infill_pattern == 'grid' or infill_pattern == 'triangles' or infill_pattern == 'trihexagon' or infill_pattern == 'cubic' or infill_pattern == 'tetrahedral' or infill_pattern == 'quarter_cubic' or infill_pattern == 'cross' or infill_pattern == 'cross_3d' or infill_pattern == 'gyroid'",
-                    "limit_to_extruder": "infill_extruder_nr",
-                    "settable_per_mesh": true
-                },
-                "connect_infill_polygons":
-                {
-                    "label": "Connect Infill Polygons",
-                    "description": "Connect infill paths where they run next to each other. For infill patterns which consist of several closed polygons, enabling this setting greatly reduces the travel time.",
-                    "type": "bool",
-                    "default_value": true,
-                    "value": "(infill_pattern == 'cross' or infill_pattern == 'cross_3d' or infill_multiplier % 2 == 0) and infill_wall_line_count > 0",
-                    "enabled": "infill_pattern == 'cross' or infill_pattern == 'cross_3d' or infill_pattern == 'concentric' or infill_multiplier % 2 == 0 or infill_wall_line_count > 1",
+                    "value": "infill_pattern == 'cross' or infill_pattern == 'cross_3d' or infill_multiplier % 2 == 0",
+                    "enabled": "(infill_pattern != 'cubic_subdivision' and infill_pattern != 'zigzag') or infill_wall_count > 1 or infill_multiplier % 2 == 0",
                     "limit_to_extruder": "infill_extruder_nr",
                     "settable_per_mesh": true
                 },
