@@ -76,7 +76,7 @@ Item
         {
             id: supportExtruderCombobox
 
-            height: UM.Theme.getSize("print_setup_big_dropdown").height
+            height: UM.Theme.getSize("print_setup_big_item").height
             anchors
             {
                 left: enableSupportCheckBox.right
@@ -97,10 +97,10 @@ Item
             property string color_override: ""  // for manually setting values
             property string color:  // is evaluated automatically, but the first time is before extruderModel being filled
             {
-                var current_extruder = extruderModel.get(currentIndex);
-                color_override = "";
+                var current_extruder = extruderModel.get(currentIndex)
+                color_override = ""
                 if (current_extruder === undefined) return ""
-                return (current_extruder.color) ? current_extruder.color : "";
+                return (current_extruder.color) ? current_extruder.color : ""
             }
 
             currentIndex:
@@ -168,15 +168,6 @@ Item
         containerStack: Cura.MachineManager.activeMachine
         key: "support_enable"
         watchedProperties: [ "value", "enabled", "description" ]
-        storeIndex: 0
-    }
-
-    UM.SettingPropertyProvider
-    {
-        id: extrudersEnabledCount
-        containerStack: Cura.MachineManager.activeMachine
-        key: "extruders_enabled_count"
-        watchedProperties: [ "value" ]
         storeIndex: 0
     }
 

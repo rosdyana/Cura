@@ -384,13 +384,13 @@ QtObject
             {
                 implicitWidth: Theme.getSize("scrollbar").width
                 radius: Math.round(implicitWidth / 2)
-                color: Theme.getColor("scrollbar_background");
+                color: Theme.getColor("scrollbar_background")
             }
 
             handle: Rectangle
             {
                 id: scrollViewHandle
-                implicitWidth: Theme.getSize("scrollbar").width;
+                implicitWidth: Theme.getSize("scrollbar").width
                 radius: Math.round(implicitWidth / 2)
 
                 color: styleData.pressed ? Theme.getColor("scrollbar_handle_down") : styleData.hovered ? Theme.getColor("scrollbar_handle_hover") : Theme.getColor("scrollbar_handle");
@@ -495,7 +495,7 @@ QtObject
                     anchors.right: downArrow.left
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.rightMargin: UM.Theme.getSize("default_margin").width
-//                    anchors.margins: Math.round(UM.Theme.getSize("default_margin").width / 4)
+
                     sourceSize.width: width
                     sourceSize.height: height
                     source: UM.Theme.getIcon("extruder_button")
