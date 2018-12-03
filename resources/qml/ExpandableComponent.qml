@@ -27,9 +27,6 @@ Item
     // The popupItem holds the QML item that is shown when the "open" button is pressed
     property var popupItem
 
-    // The popupItem holds the QML item that is shown when the "open" button is pressed
-    property var componentItem
-
     property color popupBackgroundColor: UM.Theme.getColor("action_button")
 
     property color headerBackgroundColor: UM.Theme.getColor("action_button")
@@ -39,7 +36,7 @@ Item
     property int popupAlignment: ExpandableComponent.PopupAlignment.AlignRight
 
     // How much spacing is needed around the popupItem
-    property alias popupPadding: popup.padding
+    property alias popupPadding: popupLoader.loaderPadding
 
     // How much spacing is needed for the popupItem by Y coordinate
     property var popupSpacingY: 0
@@ -56,7 +53,7 @@ Item
     property alias iconSize: collapseButton.height
 
     // Is the "drawer" open?
-    readonly property alias expanded: popup.visible
+    readonly property alias expanded: popupLoader.loaderVisible
 
     property alias expandedHighlightColor: expandedHighlight.color
 
@@ -67,7 +64,7 @@ Item
     property alias headerCornerSide: background.cornerSide
 
     // Change the popupItem close behaviour
-    property alias popupClosePolicy : popup.closePolicy
+    property var isPopupModeContainer: false
 
     property alias headerShadowColor: shadow.color
 
@@ -77,31 +74,24 @@ Item
 
     function togglePopup()
     {
-        if (popup.visible)
-        {
-            popup.close()
-        }
-        else
-        {
-            popup.open()
-        }
+        popupLoader.togglePopupVisibility()
     }
 
     onPopupItemChanged:
     {
         // Since we want the size of the popup to be set by the size of the content,
         // we need to do it like this.
-        popup.width = popupItem.width + 2 * popup.padding
-        popup.height = popupItem.height + 2 * popup.padding
-        popup.contentItem = popupItem
+//        popupLoader.width = popupItem.width + 2 * popupLoader.padding
+//        popupLoader.height = popupItem.height + 2 * popupLoader.padding
+//        popupLoader.loaderItem = popupItem
     }
 
     Connections
     {
         // Since it could be that the popup is dynamically populated, we should also take these changes into account.
         target: popupItem
-        onWidthChanged: popup.width = popupItem.width + 2 * popup.padding
-        onHeightChanged: popup.height = popupItem.height + 2 * popup.padding
+        onWidthChanged: popupLoader.width = popupItem.width + 2 * popupLoader.padding
+        onHeightChanged: popupLoader.height = popupItem.height + 2 * popupLoader.padding
     }
 
     implicitHeight: 100 * screenScaleFactor
@@ -181,26 +171,74 @@ Item
         z: background.z - 1
     }
 
-    Popup
+    Loader
     {
-        id: popup
+        property real loaderPadding: UM.Theme.getSize("default_margin").width
+        property bool loaderVisible: false
+        property color loaderPopupBackgroundColor: popupBackgroundColor
 
-        // Ensure that the popup is located directly below the headerItem
-        y: background.height + base.shadowOffset + popupSpacingY
-
-        // Make the popup aligned with the rest, using the property popupAlignment to decide whether is right or left.
-        // In case of right alignment, the 3x padding is due to left, right and padding between the button & text.
-        x: popupAlignment == ExpandableComponent.PopupAlignment.AlignRight ? -width + collapseButton.width + headerItemLoader.width + 3 * background.padding : 0
-        padding: UM.Theme.getSize("default_margin").width
-        closePolicy: Popup.CloseOnPressOutsideParent
-
-        background: Cura.RoundedRectangle
+        function togglePopupVisibility()
         {
-            cornerSide: Cura.RoundedRectangle.Direction.Down
-            color: popupBackgroundColor
-            border.width: UM.Theme.getSize("default_lining").width
-            border.color: UM.Theme.getColor("lining")
-            radius: UM.Theme.getSize("default_radius").width
+            if(isPopupModeContainer)
+            {
+                loaderVisible = !loaderVisible
+            }
+            else
+            {
+                item.open()
+            }
+        }
+
+        height: popupItem.height + 2 * loaderPadding
+        width: popupItem.width  + 2 * loaderPadding
+
+        id: popupLoader
+        sourceComponent: isPopupModeContainer ? loaderPopupContainerComponent : loaderPopupComponent
+
+        y: background.height + base.shadowOffset + popupSpacingY
+        x: popupAlignment == ExpandableComponent.PopupAlignment.AlignRight ? -popupItem.width + collapseButton.width + headerItemLoader.width + 3 * background.padding - 2 * loaderPadding: 0
+    }
+
+    Component
+    {
+        id: loaderPopupComponent
+
+        Popup
+        {
+            id: loaderPopup
+            padding: loaderPadding
+            contentItem: popupItem
+
+            background: Cura.RoundedRectangle
+            {
+                cornerSide: Cura.RoundedRectangle.Direction.Down
+                color: popupBackgroundColor
+                border.width: UM.Theme.getSize("default_lining").width
+                border.color: UM.Theme.getColor("lining")
+                radius: UM.Theme.getSize("default_radius").width
+            }
+        }
+    }
+
+    Component
+    {
+        id: loaderPopupContainerComponent
+
+        Container
+        {
+            id: loaderContainer
+
+            visible: loaderVisible
+            contentItem: popupItem
+
+            background: Cura.RoundedRectangle
+            {
+                cornerSide: Cura.RoundedRectangle.Direction.Down
+                color: loaderPopupBackgroundColor
+                border.width: UM.Theme.getSize("default_lining").width
+                border.color: UM.Theme.getColor("lining")
+                radius: UM.Theme.getSize("default_radius").width
+            }
         }
     }
 }

@@ -18,7 +18,9 @@ Cura.ExpandableComponent
     popupPadding: UM.Theme.getSize("default_lining").width
     popupSpacingY: UM.Theme.getSize("narrow_margin").width
 
-    popupClosePolicy: Popup.CloseOnEscape
+    isPopupModeContainer: true
+
+    popupAlignment: Cura.ExpandableComponent.PopupAlignment.AlignRight
 
     UM.I18nCatalog
     {
