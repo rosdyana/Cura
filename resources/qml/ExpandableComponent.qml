@@ -38,7 +38,7 @@ Item
     property int contentAlignment: ExpandableComponent.ContentAlignment.AlignRight
 
     // How much spacing is needed around the contentItem
-    property alias contentPadding: content.padding
+    property var contentPadding: UM.Theme.getSize("default_margin").width
 
     // How much spacing is needed for the contentItem by Y coordinate
     property var contentSpacingY: UM.Theme.getSize("narrow_margin").width
@@ -150,7 +150,7 @@ Item
         // Make the content aligned with the rest, using the property contentAlignment to decide whether is right or left.
         // In case of right alignment, the 3x padding is due to left, right and padding between the button & text.
         x: contentAlignment == ExpandableComponent.ContentAlignment.AlignRight ? -width + collapseButton.width + headerItemLoader.width + 3 * background.padding : 0
-        padding: UM.Theme.getSize("default_margin").width
+        padding: contentPadding
 
         background: Cura.RoundedRectangle
         {
@@ -167,8 +167,8 @@ Item
         {
             // Since we want the size of the content to be set by the size of the content,
             // we need to do it like this.
-            content.width = contentItem.width + 2 * content.padding
-            content.height = contentItem.height + 2 * content.padding
+            content.width = contentItem.width + (2 * content.padding)
+            content.height = contentItem.height + (2 * content.padding)
         }
     }
 

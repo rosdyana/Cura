@@ -15,7 +15,24 @@ Item
     id: popup
 
     width: UM.Theme.getSize("print_setup_widget").width - 2 * UM.Theme.getSize("default_margin").width
-    height: childrenRect.height
+    height:
+    {
+        if(currentModeIndex == PrintSetupSelectorContents.Mode.Custom)
+        {
+            if(extrudersModel.count > 1)
+            {
+                return 644
+            }
+            else
+            {
+                return 580
+            }
+        }
+        else
+        {
+            return childrenRect.height
+        }
+    }
 
     enum Mode
     {
